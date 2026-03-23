@@ -1,0 +1,101 @@
+:root {
+    --primary-color: #007bff;
+    --bg-color: #f8f9fa;
+    --border-color: #ddd;
+    --text-color: #333;
+}
+
+#rrule-gen {
+    width: 100%;
+    font-family: sans-serif;
+    color: var(--text-color);
+}
+
+.form-container {
+    background: var(--bg-color);
+    padding: 20px;
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+    margin-bottom: 20px;
+}
+
+.form-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    margin-bottom: 15px;
+}
+
+.form-row label:first-child {
+    flex: 0 0 120px;
+    font-weight: bold;
+}
+
+.form-row .input-content {
+    flex: 1;
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+input[type="text"],
+input[type="number"],
+input[type="date"],
+select {
+    padding: 8px;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    width: 100%;
+}
+
+.btn-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 5px;
+    margin-top: 10px;
+}
+
+.month-btn-grid {
+    grid-template-columns: repeat(6, 1fr);
+}
+
+.btn-toggle {
+    padding: 8px 5px;
+    background: #fff;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 12px;
+    transition: all 0.2s;
+}
+
+.btn-toggle:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.btn-toggle.active {
+    background: var(--primary-color);
+    color: white;
+    border-color: var(--primary-color);
+}
+
+.output-well {
+    background: #e7f3ff;
+    border: 1px solid #b6d4fe;
+    padding: 15px;
+    border-radius: 8px;
+}
+
+.output-well input {
+    background: #fff !important;
+    font-family: monospace;
+    font-weight: bold;
+    color: #004085;
+}
+
+hr {
+    border: 0;
+    border-top: 1px solid var(--border-color);
+    margin: 20px 0;
+}

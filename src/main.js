@@ -1,10 +1,7 @@
-/**
- * RRULE GENERATOR - Full Vanilla Version with Yearly Precision
- */
+import './style.css';
 
 let recurringRule = {};
 
-// Helper: Format Date objects to YYYYMMDD
 const formatDate = (dateStr) => dateStr.replace(/-/g, '');
 
 const INITIAL_STATE = () => {
@@ -33,127 +30,128 @@ function renderForm() {
 	const container = document.getElementById('rrule-form-container');
 	const today = new Date().toISOString().split('T')[0];
 
+	// Helper for precise selects to avoid repetition
+	const setPosOptions = `
+        <option value="1">First</option>
+        <option value="2">Second</option>
+        <option value="3">Third</option>
+        <option value="4">Fourth</option>
+        <option value="5">Fifth</option>
+        <option value="-1">Last</option>`;
+
+	const dayOptions = `
+        <option value="SU,MO,TU,WE,TH,FR,SA" selected>Day</option>
+        <option value="MO,TU,WE,TH,FR">Weekday</option>
+        <option value="SU,SA">Weekend day</option>
+        <option value="MO">Monday</option>
+        <option value="TU">Tuesday</option>
+        <option value="WE">Wednesday</option>
+        <option value="TH">Thursday</option>
+        <option value="FR">Friday</option>
+        <option value="SA">Saturday</option>
+		<option value="SU">Sunday</option>
+`;
+
 	container.innerHTML = `
-    <form id="rrule-gen" class="form-horizontal">
-        <div class="well">
-            <div class="form-group">
-                <label class="col-sm-3 control-label">Start Date</label>
-                <div class="col-sm-9">
-                    <input type="date" id="start-date" class="form-control" value="${today}">
+    <form id="rrule-gen">
+        <div class="form-container">
+            <div class="form-row">
+                <label>Start Date</label>
+                <div class="input-content">
+                    <input type="date" id="start-date" value="${today}">
                 </div>
             </div>
 
-            <div class="form-group">
-                <label class="col-sm-3 control-label">Recurring?</label>
-                <div class="col-sm-9">
-                    <label class="radio-inline"><input type="radio" name="event-recurring" value="no" checked> No</label>
-                    <label class="radio-inline"><input type="radio" name="event-recurring" value="yes"> Yes</label>
+            <div class="form-row">
+                <label>Recurring?</label>
+                <div class="input-content">
+                    <label><input type="radio" name="event-recurring" value="no" checked> No</label>
+                    <label><input type="radio" name="event-recurring" value="yes"> Yes</label>
                 </div>
             </div>
 
             <div id="recurring-rules" style="display:none;">
                 <hr>
-                <div class="form-group">
-                    <label class="col-sm-3 control-label">Frequency</label>
-                    <div class="col-sm-4">
-                        <select name="freq" class="form-control">
+                <div class="form-row">
+                    <label>Frequency</label>
+                    <div class="input-content">
+                        <select name="freq" style="flex: 2;">
                             <option value="DAILY">Daily</option>
                             <option value="WEEKLY">Weekly</option>
                             <option value="MONTHLY">Monthly</option>
                             <option value="YEARLY">Yearly</option>
                         </select>
-                    </div>
-                    <div class="col-sm-5">
-                        <div class="input-group">
-                            <span class="input-group-addon">Every</span>
-                            <input type="number" name="interval" class="form-control" value="1" min="1">
-                            <span class="input-group-addon freq-selection-label">days</span>
-                        </div>
+                        <span>Every</span>
+                        <input type="number" name="interval" value="1" min="1" style="flex: 1;">
+                        <span class="freq-selection-label">days</span>
                     </div>
                 </div>
 
-                <div id="weekday-select" class="weeks-choice" style="display:none; margin-bottom: 15px;">
+                <div id="weekday-select" class="weeks-choice" style="display:none;">
                     <label>Repeat on:</label>
-                    <div class="btn-group btn-group-justified" role="group">
-                        ${['SU', 'MO', 'TU', 'WE', 'TH', 'FR', 'SA'].map(d => `<div class="btn-group"><button type="button" class="btn btn-default day-btn" data-day="${d}">${d}</button></div>`).join('')}
+                    <div class="btn-grid">
+                        ${['SU', 'MO', 'TU', 'WE', 'TH', 'FR', 'SA'].map(d => `<button type="button" class="btn-toggle day-btn" data-day="${d}">${d}</button>`).join('')}
                     </div>
                 </div>
 
-                <div id="monthday-select" class="months-choice" style="display:none; margin-bottom: 15px;">
-                    <div class="radio"><label><input type="radio" name="month-options" value="bymonthday" checked> On Days:</label></div>
-                    <div class="btn-group-wrap m-b-10">
-                        ${Array.from({ length: 31 }, (_, i) => `<button type="button" class="btn btn-default btn-xs monthday-btn" data-mday="${i + 1}">${i + 1}</button>`).join('')}
+                <div id="monthday-select" class="months-choice" style="display:none;">
+                    <div class="form-row"><label><input type="radio" name="month-options" value="bymonthday" checked> On Days:</label></div>
+                    <div class="btn-grid" style="grid-template-columns: repeat(7, 1fr);">
+                        ${Array.from({ length: 31 }, (_, i) => `<button type="button" class="btn-toggle monthday-btn" data-mday="${i + 1}">${i + 1}</button>`).join('')}
                     </div>
-                    <div class="radio"><label><input type="radio" name="month-options" value="precise"> Or precise:</label></div>
-                    <div class="row">
-                        <div class="col-xs-6">
-                            <select name="month-setpos" class="form-control month-precise-ctrl" disabled>
-                                <option value="1">First</option><option value="2">Second</option><option value="3">Third</option><option value="4">Fourth</option><option value="-1">Last</option>
-                            </select>
-                        </div>
-                        <div class="col-xs-6">
-                            <select name="month-byday" class="form-control month-precise-ctrl" disabled>
-                                <option value="SU">Sunday</option><option value="MO">Monday</option><option value="TU">Tuesday</option><option value="WE">Wednesday</option><option value="TH">Thursday</option><option value="FR">Friday</option><option value="SA">Saturday</option>
-                                <option value="SU,MO,TU,WE,TH,FR,SA" selected>Day</option>
-                                <option value="MO,TU,WE,TH,FR">Weekday</option>
-                                <option value="SU,SA">Weekend day</option>
-                            </select>
-                        </div>
+                    <div class="form-row" style="margin-top:10px;"><label><input type="radio" name="month-options" value="precise"> Or precise:</label></div>
+                    <div class="input-content">
+                        <select name="month-setpos" class="month-precise-ctrl" disabled>${setPosOptions}</select>
+                        <select name="month-byday" class="month-precise-ctrl" disabled>${dayOptions}</select>
                     </div>
                 </div>
 
-                <div id="yearly-select" class="years-choice" style="display:none; margin-bottom: 15px;">
-                    <div class="radio"><label><input type="radio" name="yearly-options" value="one-month" checked> Single Month</label></div>
-                    <div class="row">
-                        <div class="col-xs-6">
-                            <select name="yearly-bymonth" class="form-control yearly-one-month-ctrl">
-                                ${['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'].map((m, i) => `<option value="${i + 1}">${m}</option>`).join('')}
-                            </select>
-                        </div>
-                        <div class="col-xs-6">
-                            <select name="yearly-bymonthday" class="form-control yearly-one-month-ctrl">
-                                ${Array.from({ length: 31 }, (_, i) => `<option value="${i + 1}">${i + 1}</option>`).join('')}
-                            </select>
-                        </div>
+                <div id="yearly-select" class="years-choice" style="display:none;">
+                    <div class="form-row"><label><input type="radio" name="yearly-options" value="one-month" checked> Single Month</label></div>
+                    <div class="input-content">
+                        <select name="yearly-bymonth" class="yearly-one-month-ctrl">
+                            ${['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'].map((m, i) => `<option value="${i + 1}">${m}</option>`).join('')}
+                        </select>
+                        <select name="yearly-bymonthday" class="yearly-one-month-ctrl">
+                            ${Array.from({ length: 31 }, (_, i) => `<option value="${i + 1}">${i + 1}</option>`).join('')}
+                        </select>
                     </div>
 
-                    <div class="radio"><label><input type="radio" name="yearly-options" value="multiple-months"> Multiple Months</label></div>
-                    <div class="btn-group-wrap m-b-10">
-                        ${['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'].map((m, i) => `<button type="button" class="btn btn-default btn-xs yearly-month-btn" data-month="${i + 1}" disabled>${m}</button>`).join('')}
+                    <div class="form-row"><label><input type="radio" name="yearly-options" value="multiple-months"> Multiple Months</label></div>
+                    <div class="btn-grid month-btn-grid">
+                        ${['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'].map((m, i) => `<button type="button" class="btn-toggle yearly-month-btn" data-month="${i + 1}" disabled>${m}</button>`).join('')}
                     </div>
 
-                    <div class="radio"><label><input type="radio" name="yearly-options" value="precise"> Precise Yearly</label></div>
-                    <div class="row">
-                        <div class="col-xs-4">
-                            <select name="yearly-setpos" class="form-control yearly-precise-ctrl" disabled>
-                                <option value="1">First</option><option value="2">Second</option><option value="3">Third</option><option value="4">Fourth</option><option value="-1">Last</option>
-                            </select>
-                        </div>
-                        <div class="col-xs-4">
-                            <select name="yearly-byday" class="form-control yearly-precise-ctrl" disabled>
-                                <option value="SU">Sunday</option><option value="MO">Monday</option><option value="TU">Tuesday</option><option value="WE">Wednesday</option><option value="TH">Thursday</option><option value="FR">Friday</option><option value="SA">Saturday</option>
-                                <option value="SU,MO,TU,WE,TH,FR,SA" selected>Day</option>
-                            </select>
-                        </div>
-                        <div class="col-xs-4">
-                            <select name="yearly-bymonth-precise" class="form-control yearly-precise-ctrl" disabled>
-                                ${['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'].map((m, i) => `<option value="${i + 1}">${m}</option>`).join('')}
-                            </select>
-                        </div>
+                    <div class="form-row"><label><input type="radio" name="yearly-options" value="precise"> Precise Yearly</label></div>
+                    <div class="input-content">
+                        <select name="yearly-setpos" class="yearly-precise-ctrl" disabled>${setPosOptions}</select>
+                        <select name="yearly-byday" class="yearly-precise-ctrl" disabled>${dayOptions}</select>
+                        <select name="yearly-bymonth-precise" class="yearly-precise-ctrl" disabled>
+                             ${['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'].map((m, i) => `<option value="${i + 1}">${m}</option>`).join('')}
+                        </select>
                     </div>
                 </div>
 
                 <div id="until-rules" style="margin-top:20px;">
-                    <label>End Condition:</label>
-                    <div class="radio"><label><input type="radio" name="end-select" value="count" checked> After <input type="number" name="count" value="1" min="1" style="width: 60px;"> occurrences</label></div>
-                    <div class="radio"><label><input type="radio" name="end-select" value="until"> Until Date <input type="date" name="until" id="end-date" disabled></label></div>
+                    <div class="form-row">
+                        <label><input type="radio" name="end-select" value="count" checked> After</label>
+                        <div class="input-content">
+                            <input type="number" name="count" value="1" min="1" style="width: 80px;"> occurrences
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <label><input type="radio" name="end-select" value="until"> Until</label>
+                        <div class="input-content">
+                            <input type="date" name="until" id="end-date" disabled>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
 
-        <div class="alert alert-info">
+        <div class="output-well">
             <strong>Generated RRULE:</strong>
-            <input type="text" id="rrule-output" class="form-control" readonly style="background: #fff; cursor: text; margin-top: 10px;">
+            <input type="text" id="rrule-output" readonly>
         </div>
     </form>
     `;
@@ -164,12 +162,9 @@ function attachListeners() {
 
 	form.addEventListener('change', (e) => {
 		const target = e.target;
-
-		// Visibility Toggles
 		if (target.name === 'event-recurring') {
 			document.getElementById('recurring-rules').style.display = target.value === 'yes' ? 'block' : 'none';
 		}
-
 		if (target.name === 'freq') {
 			const val = target.value;
 			document.querySelector('.freq-selection-label').textContent = val.toLowerCase() + '(s)';
@@ -177,41 +172,33 @@ function attachListeners() {
 			document.querySelector('.months-choice').style.display = val === 'MONTHLY' ? 'block' : 'none';
 			document.querySelector('.years-choice').style.display = val === 'YEARLY' ? 'block' : 'none';
 		}
-
-		// Sub-option Control (Enabling/Disabling specific selects)
 		if (target.name === 'month-options') {
 			form.querySelectorAll('.month-precise-ctrl').forEach(el => el.disabled = target.value !== 'precise');
-			form.querySelectorAll('.monthday-btn').forEach(el => target.value === 'precise' ? el.classList.remove('active', 'btn-primary') : null);
+			if (target.value === 'precise') form.querySelectorAll('.monthday-btn').forEach(b => b.classList.remove('active'));
 		}
-
 		if (target.name === 'yearly-options') {
 			form.querySelectorAll('.yearly-one-month-ctrl').forEach(el => el.disabled = target.value !== 'one-month');
 			form.querySelectorAll('.yearly-month-btn').forEach(el => el.disabled = target.value !== 'multiple-months');
 			form.querySelectorAll('.yearly-precise-ctrl').forEach(el => el.disabled = target.value !== 'precise');
 		}
-
 		if (target.name === 'end-select') {
 			form.querySelector('input[name="count"]').disabled = target.value !== 'count';
 			form.querySelector('input[name="until"]').disabled = target.value !== 'until';
 		}
-
 		syncData();
 		updateOutput();
 	});
 
-	// Button Toggles
 	form.addEventListener('click', (e) => {
-		if (e.target.tagName === 'BUTTON') {
+		if (e.target.classList.contains('btn-toggle')) {
 			e.preventDefault();
 			if (e.target.disabled) return;
 			e.target.classList.toggle('active');
-			e.target.classList.toggle('btn-primary');
 			syncData();
 			updateOutput();
 		}
 	});
 
-	// Start Date
 	document.getElementById('start-date').addEventListener('input', () => {
 		recurringRule.dtstart = formatDate(document.getElementById('start-date').value) + 'T000000Z';
 		updateOutput();
@@ -220,22 +207,40 @@ function attachListeners() {
 
 function syncData() {
 	const form = document.getElementById('rrule-gen');
-	const freq = form.querySelector('select[name="freq"]').value;
+	const isRecurring = form.querySelector('input[name="event-recurring"]:checked').value === 'yes';
 
-	// Core Reset
+	// 1. Always sync the Start Date
+	const startDateVal = document.getElementById('start-date').value;
+	recurringRule.dtstart = startDateVal ? formatDate(startDateVal) + 'T000000Z' : "";
+
+	// 2. If not recurring, clear other fields and stop
+	if (!isRecurring) {
+		recurringRule.freq = "";
+		recurringRule.interval = "";
+		recurringRule.byday = "";
+		recurringRule.bymonth = "";
+		recurringRule.bymonthday = "";
+		recurringRule.bysetpos = "";
+		recurringRule.count = "";
+		recurringRule.until = "";
+		return;
+	}
+
+	// 3. Otherwise, proceed with existing logic
+	const freq = form.querySelector('select[name="freq"]').value;
 	recurringRule.freq = freq;
 	recurringRule.interval = form.querySelector('input[name="interval"]').value;
+
+	// Clear transient fields before re-assigning
 	recurringRule.byday = "";
 	recurringRule.bymonth = "";
 	recurringRule.bymonthday = "";
 	recurringRule.bysetpos = "";
 
-	// Weekly
 	if (freq === 'WEEKLY') {
 		recurringRule.byday = Array.from(form.querySelectorAll('.day-btn.active')).map(b => b.dataset.day).join(',');
 	}
 
-	// Monthly
 	if (freq === 'MONTHLY') {
 		const mode = form.querySelector('input[name="month-options"]:checked').value;
 		if (mode === 'bymonthday') {
@@ -246,7 +251,6 @@ function syncData() {
 		}
 	}
 
-	// Yearly
 	if (freq === 'YEARLY') {
 		const mode = form.querySelector('input[name="yearly-options"]:checked').value;
 		if (mode === 'one-month') {
@@ -261,28 +265,28 @@ function syncData() {
 		}
 	}
 
-	// End condition
 	const endType = form.querySelector('input[name="end-select"]:checked').value;
-	if (endType === 'count') {
-		recurringRule.count = form.querySelector('input[name="count"]').value;
-		recurringRule.until = "";
-	} else {
-		recurringRule.count = "";
-		const uVal = form.querySelector('input[name="until"]').value;
-		recurringRule.until = uVal ? formatDate(uVal) + 'T000000Z' : "";
-	}
+	recurringRule.count = endType === 'count' ? form.querySelector('input[name="count"]').value : "";
+	const uVal = form.querySelector('input[name="until"]').value;
+	recurringRule.until = endType === 'until' && uVal ? formatDate(uVal) + 'T000000Z' : "";
 }
 
 function updateOutput() {
 	let parts = [];
-	const order = ['freq', 'dtstart', 'interval', 'byday', 'bymonth', 'bymonthday', 'bysetpos', 'count', 'until'];
+	// If freq is empty, it means "No Recurring" was selected
+	if (!recurringRule.freq) {
+		document.getElementById('rrule-output').value = recurringRule.dtstart ? `DTSTART:${recurringRule.dtstart}` : "";
+		return;
+	}
 
+	const order = ['freq', 'dtstart', 'interval', 'byday', 'bymonth', 'bymonthday', 'bysetpos', 'count', 'until'];
 	order.forEach(key => {
 		if (recurringRule[key]) {
-			parts.push(`${key.toUpperCase()}=${recurringRule[key]}`);
+			const prefix = key === 'dtstart' ? 'DTSTART:' : ''; // Standard prefix for start date
+			const separator = key === 'dtstart' ? ';' : '';
+			parts.push(`${prefix}${key.toUpperCase()}=${recurringRule[key]}`);
 		}
 	});
-
 	document.getElementById('rrule-output').value = parts.join(';');
 }
 
