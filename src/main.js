@@ -218,12 +218,12 @@ function RRuleGenerator(targetInput) {
 	const uid = `rrg${++_instanceCount}`;
 	const id = suffix => `${uid}-${suffix}`;
 
-	// ── Read any existing value before hiding the input ──────────────────────
+	// ── Read any existing value before repositioning the input ───────────────
 	const existingValue = (targetInput.value || '').trim();
 
-	// ── Hide the target input — keep it in the form for submission ───────────
-	targetInput.type = 'hidden';
-	targetInput.value = existingValue; // preserve until first updateOutput()
+	// ── Make the input readonly — it stays visible and in the form ───────────
+	targetInput.readOnly = true;
+	targetInput.classList.add('rrule-output-input');
 
 	// ── Build and inject the widget markup ───────────────────────────────────
 	const widget = document.createElement('div');
@@ -239,6 +239,9 @@ function RRuleGenerator(targetInput) {
 	const $ = sel => root.querySelector(sel);
 	const $$ = sel => Array.from(root.querySelectorAll(sel));
 	const byId = suffix => root.querySelector(`#${id(suffix)}`);
+
+	// ── Move the real input into the output slot ─────────────────────────────
+	byId('output-body').appendChild(targetInput);
 
 	// ── Hydrate from existing value if present ───────────────────────────────
 	const parsedParts = parseRRule(existingValue);
@@ -267,9 +270,12 @@ function RRuleGenerator(targetInput) {
 	return {
 		/** Remove the widget and restore the original input. */
 		destroy() {
-			widget.remove();
-			targetInput.type = 'text';
+			// Move the input back to its original position before removing the widget
+			widget.insertAdjacentElement('beforebegin', targetInput);
+			targetInput.readOnly = false;
+			targetInput.classList.remove('rrule-output-input');
 			targetInput.value = '';
+			widget.remove();
 		},
 	};
 }
@@ -497,10 +503,9 @@ function buildTemplate(uid, id) {
     <div class="output-card">
       <div class="output-header">
         <span class="label">Output</span>
-        <button type="button" class="copy-btn" id="${id('copy-btn')}">Copy</button>
       </div>
       <div class="output-body" id="${id('output-body')}">
-        <div class="output-line" id="${id('output-rrule')}"></div>
+        <!-- targetInput is moved here by the factory -->
       </div>
     </div>
 
@@ -619,36 +624,13 @@ function buildRule($, $$, byId) {
 
 // ─── Output rendering ─────────────────────────────────────────────────────────
 
-function escHtml(s) {
-	return String(s)
-		.replace(/&/g, '&amp;')
-		.replace(/</g, '&lt;')
-		.replace(/>/g, '&gt;');
-}
-
-function colouriseRRule(line) {
-	if (!line.startsWith('RRULE:')) return escHtml(line);
-	const inner = line.slice(6).split(';').map(part => {
-		const eq = part.indexOf('=');
-		if (eq === -1) return `<span class="rr-val">${escHtml(part)}</span>`;
-		const k = part.slice(0, eq);
-		const v = part.slice(eq + 1);
-		return `<span class="rr-key">${escHtml(k)}</span><span class="rr-sep">=</span><span class="rr-val">${escHtml(v)}</span>`;
-	}).join('<span class="rr-sep">;</span>');
-	return `<span class="rr-key">RRULE:</span>${inner}`;
-}
-
 function updateOutput(root, $, $$, byId, targetInput) {
 	const rule = buildRule($, $$, byId);
 
-	// ── Keep the hidden input in sync so the parent form submits correctly ───
+	// ── Write the RRULE string into the visible readonly input ───────────────
+	// The input is already inside the widget's output slot, so this both
+	// displays the current value to the user and keeps the form value correct.
 	targetInput.value = rule.rrule;
-
-	// ── Refresh the visible output panel ─────────────────────────────────────
-	const rrEl = byId('output-rrule');
-	rrEl.innerHTML = rule.rrule
-		? colouriseRRule(rule.rrule)
-		: '<span style="color:var(--muted)">—</span>';
 
 	// Remove stale global warnings then re-render current ones
 	root.querySelectorAll('.global-warning').forEach(el => el.remove());
@@ -829,17 +811,6 @@ function attachListeners(root, $, $$, byId, targetInput) {
 		el.addEventListener('input', refresh);
 	});
 
-	// Copy button
-	byId('copy-btn').addEventListener('click', () => {
-		const { rrule } = buildRule($, $$, byId);
-		if (!rrule) return;
-		navigator.clipboard.writeText(rrule).then(() => {
-			const btn = byId('copy-btn');
-			btn.textContent = 'Copied!';
-			btn.classList.add('copied');
-			setTimeout(() => { btn.textContent = 'Copy'; btn.classList.remove('copied'); }, 1500);
-		});
-	});
 }
 
 // ─── Auto-initialise on DOMContentLoaded ─────────────────────────────────────

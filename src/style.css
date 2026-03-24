@@ -277,20 +277,17 @@ select {
     color: #111;
 }
 
-/* Syntax Coloring (Light Mode) */
-.rr-key {
-    color: #0550ae;
-    font-weight: 600;
-}
-
-.rr-val {
-    color: #116329;
-}
-
-.rr-sep {
-    color: #666;
-}
-
-.prop-param {
-    color: #953800;
+.rrule-output-input {
+    display: block;
+    width: 100%;
+    font-family: var(--mono);
+    font-size: 12px;
+    background: transparent;
+    border: none;
+    outline: none;
+    color: var(--text);
+    cursor: default;
+    padding: 0;
+    line-height: 1.7;
+    word-break: break-all;
 }

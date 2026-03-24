@@ -22,5 +22,8 @@
   "homepage": "https://github.com/superherogeek/rrule-generator-form#readme",
   "devDependencies": {
     "vite": "^8.0.2"
+  },
+  "dependencies": {
+    "vite-plugin-css-injected-by-js": "^4.0.1"
   }
 }
