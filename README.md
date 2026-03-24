@@ -1,6 +1,23 @@
+# HOWTO use
+
+In any HTML form(s) that requires an RRULE in a HTML Input (text) element - just add a property 'data-rrule-generator-form' to identify it then include the Javascript e.g.
+
+'''
+// Example blank
+<form id="my_form_1">
+<input type="text" data-rrule-generator-form value="">
+<input type="submit">
+</form>
+
+// Example with pre-exsiting RRULE to edit
+<form id="my_form_2">
+<input type="text" data-rrule-generator-form value="RRULE:FREQ=MONTHLY;COUNT=5;BYMONTHDAY=9,12,13">
+<input type="submit">
+</form>
+
+<script src="rrule_gui.js"></script>
+'''
+
+## Acknowledgements
+
 Forked from <https://github.com/superherogeek/rrule-generator-form>
-
-TODO
-Make into a tool that can be applied to a text input to generate an appropriate RRULE (like adding a quill editor to a textarea)
-
-TODO Handle the DTSTART separately
