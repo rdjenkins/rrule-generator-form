@@ -1,6 +1,6 @@
 import './style.css';
 
-// ─── Templates ───────────────────────────────────────────────────────
+// ─── Template constants ───────────────────────────────────────────────────────
 
 const WEEKDAYS = ['MO', 'TU', 'WE', 'TH', 'FR', 'SA', 'SU'];
 
@@ -34,7 +34,7 @@ const MONTH_OPTIONS = MONTHS_LONG
 const MONTHDAY_OPTIONS = Array.from({ length: 31 }, (_, i) =>
 	`<option value="${i + 1}">${i + 1}</option>`).join('');
 
-// ─── Instance counter — guarantees unique IDs if multiple widgets exist ─────
+// ─── Instance counter — guarantees unique IDs when multiple widgets exist ─────
 
 let _instanceCount = 0;
 
@@ -74,14 +74,8 @@ function RRuleGenerator(targetInput) {
 	const $$ = sel => Array.from(root.querySelectorAll(sel));
 	const byId = suffix => root.querySelector(`#${id(suffix)}`);
 
-	// ── Initialise defaults ──────────────────────────────────────────────────
-	const today = new Date().toISOString().split('T')[0];
-	byId('start-date').value = today;
-	byId('until-date').value = today;
-	populateTimezones(root, id);
-
 	// ── Wire up all event listeners ──────────────────────────────────────────
-	attachListeners(root, $, $$, byId, id, targetInput);
+	attachListeners(root, $, $$, byId, targetInput);
 
 	// ── Apply initial visibility and render first output ─────────────────────
 	applyFreqVisibility(byId);
@@ -96,7 +90,7 @@ function RRuleGenerator(targetInput) {
 		destroy() {
 			widget.remove();
 			targetInput.type = 'text';
-			targetInput.value = ''; // TODO there may be existing values of course!
+			targetInput.value = '';
 		},
 	};
 }
@@ -116,8 +110,7 @@ function buildTemplate(uid, id) {
 		`<button type="button" class="btn-toggle yearly-month-btn" data-month="${i + 1}">${m}</button>`
 	).join('');
 
-	// Radio/select name attributes are also prefixed so sibling widgets
-	// don't share the same radio groups
+	// Radio name attributes are prefixed so sibling widgets don't share groups
 	const n = suffix => `${uid}_${suffix}`;
 
 	return `
@@ -128,22 +121,10 @@ function buildTemplate(uid, id) {
       <span class="badge">RFC 5545</span>
     </div>
 
-    <!-- ── Event Timing card ── -->
+    <!-- ── Recurring toggle card ── -->
     <div class="card">
-      <div class="card-header"><div class="dot"></div><span>Event Timing</span></div>
+      <div class="card-header"><div class="dot"></div><span>Recurrence</span></div>
       <div class="card-body">
-
-        <div class="form-row">
-          <label class="row-label">DTSTART</label>
-          <div class="row-controls">
-            <input type="date" id="${id('start-date')}">
-            <input type="time" id="${id('start-time')}" value="00:00">
-            <div class="select-wrap">
-              <select id="${id('tz-select')}"></select>
-            </div>
-          </div>
-        </div>
-
         <div class="form-row">
           <label class="row-label">Recurring</label>
           <div class="row-controls">
@@ -157,7 +138,6 @@ function buildTemplate(uid, id) {
             </div>
           </div>
         </div>
-
       </div>
     </div>
 
@@ -166,6 +146,7 @@ function buildTemplate(uid, id) {
       <div class="card-header"><div class="dot"></div><span>Recurrence Rule</span></div>
       <div class="card-body">
 
+        <!-- Frequency + Interval -->
         <div class="form-row">
           <label class="row-label">Frequency</label>
           <div class="row-controls">
@@ -340,117 +321,26 @@ function buildTemplate(uid, id) {
         <button type="button" class="copy-btn" id="${id('copy-btn')}">Copy</button>
       </div>
       <div class="output-body" id="${id('output-body')}">
-        <div class="output-line" id="${id('output-dtstart')}"></div>
         <div class="output-line" id="${id('output-rrule')}"></div>
-        <div class="tz-note"    id="${id('tz-note')}"></div>
       </div>
     </div>
 
   </div>`;
 }
 
-// ─── Timezone helpers ─────────────────────────────────────────────────────────
-
-function getLocalTimezone() {
-	try { return Intl.DateTimeFormat().resolvedOptions().timeZone; }
-	catch (e) { return 'UTC'; }
-}
-
-const TIMEZONE_LIST = [
-	'UTC',
-	'Europe/London', 'Europe/Dublin', 'Europe/Lisbon',
-	'Europe/Paris', 'Europe/Berlin', 'Europe/Rome', 'Europe/Madrid', 'Europe/Amsterdam',
-	'Europe/Brussels', 'Europe/Zurich', 'Europe/Vienna', 'Europe/Prague', 'Europe/Warsaw',
-	'Europe/Stockholm', 'Europe/Oslo', 'Europe/Copenhagen', 'Europe/Helsinki',
-	'Europe/Athens', 'Europe/Bucharest', 'Europe/Sofia', 'Europe/Istanbul',
-	'Europe/Moscow', 'Europe/Kiev',
-	'Asia/Kolkata', 'Asia/Karachi', 'Asia/Dhaka', 'Asia/Colombo',
-	'Asia/Almaty', 'Asia/Tashkent', 'Asia/Yekaterinburg',
-	'Asia/Dubai', 'Asia/Baghdad', 'Asia/Riyadh', 'Asia/Tehran',
-	'Asia/Bangkok', 'Asia/Jakarta', 'Asia/Kuala_Lumpur', 'Asia/Singapore',
-	'Asia/Shanghai', 'Asia/Hong_Kong', 'Asia/Taipei', 'Asia/Tokyo', 'Asia/Seoul',
-	'Asia/Vladivostok', 'Asia/Magadan', 'Asia/Kamchatka',
-	'Australia/Perth', 'Australia/Darwin', 'Australia/Adelaide',
-	'Australia/Brisbane', 'Australia/Sydney', 'Australia/Melbourne', 'Australia/Hobart',
-	'Pacific/Auckland', 'Pacific/Fiji', 'Pacific/Honolulu', 'Pacific/Tahiti',
-	'Pacific/Guam', 'Pacific/Port_Moresby',
-	'America/Anchorage', 'America/Los_Angeles', 'America/Denver', 'America/Phoenix',
-	'America/Chicago', 'America/New_York', 'America/Indiana/Indianapolis',
-	'America/Halifax', 'America/St_Johns', 'America/Sao_Paulo', 'America/Argentina/Buenos_Aires',
-	'America/Santiago', 'America/Lima', 'America/Bogota', 'America/Caracas',
-	'America/Mexico_City', 'America/Toronto', 'America/Vancouver',
-	'America/Winnipeg', 'America/Edmonton', 'America/Regina',
-	'Africa/Abidjan', 'Africa/Lagos', 'Africa/Nairobi', 'Africa/Cairo', 'Africa/Johannesburg',
-];
-
-function populateTimezones(root, id) {
-	const sel = root.querySelector(`#${id('tz-select')}`);
-	const local = getLocalTimezone();
-
-	// Prepend the user's detected zone if it isn't already in the curated list
-	if (!TIMEZONE_LIST.includes(local)) {
-		const opt = document.createElement('option');
-		opt.value = local;
-		opt.textContent = local.replace(/_/g, ' ') + ' (local)';
-		opt.selected = true;
-		sel.appendChild(opt);
-	}
-
-	TIMEZONE_LIST.forEach(z => {
-		const opt = document.createElement('option');
-		opt.value = z;
-		opt.textContent = z.replace(/_/g, ' ');
-		if (z === local) opt.selected = true;
-		sel.appendChild(opt);
-	});
-}
-
-// ─── Date / time formatting ───────────────────────────────────────────────────
-
-/**
- * Build an RFC 5545 DATE-TIME value string.
- * UTC   → "YYYYMMDDTHHmmssZ"
- * Local → "YYYYMMDDTHHmmss"  (TZID param is carried separately in DTSTART)
- */
-function formatDateTime(dateStr, timeStr, tz) {
-	if (!dateStr) return '';
-	const [y, m, d] = dateStr.split('-');
-	const [hh, mm] = (timeStr || '00:00').split(':');
-	const base = `${y}${m}${d}T${hh}${mm}00`;
-	return tz === 'UTC' ? base + 'Z' : base;
-}
-
-/**
- * Build the full DTSTART property string, including TZID param when needed.
- *   "DTSTART;TZID=Europe/London:20260323T090000"
- *   "DTSTART:20260323T090000Z"
- */
-function buildDTSTART(dateStr, timeStr, tz) {
-	const val = formatDateTime(dateStr, timeStr, tz);
-	if (!val) return '';
-	return tz === 'UTC'
-		? `DTSTART:${val}`
-		: `DTSTART;TZID=${tz}:${val}`;
-}
-
 // ─── Rule builder ─────────────────────────────────────────────────────────────
 
 /**
  * Read the current widget state and return:
- *   { dtstart: string, rrule: string, warnings: string[] }
+ *   { rrule: string, warnings: string[] }
  *
  * All DOM queries are scoped to this widget's root via the $ / $$ / byId
  * helpers, so multiple widgets on the same page never interfere with each other.
  */
 function buildRule($, $$, byId) {
-	// name$= suffix-matches the prefixed radio name, e.g. "rrg1_event-recurring"
 	const isRecurring = $('input[name$="_event-recurring"]:checked').value === 'yes';
-	const dateStr = byId('start-date').value;
-	const timeStr = byId('start-time').value;
-	const tz = byId('tz-select').value;
 
 	const result = {
-		dtstart: buildDTSTART(dateStr, timeStr, tz),
 		rrule: '',
 		warnings: [],
 	};
@@ -529,11 +419,9 @@ function buildRule($, $$, byId) {
 		const ut = byId('until-time').value;
 		if (ud) {
 			// RFC 5545: UNTIL must be in UTC for interoperability.
-			const untilVal = formatDateTime(ud, ut, 'UTC');
-			parts.UNTIL = untilVal.endsWith('Z') ? untilVal : untilVal + 'Z';
-			if (dateStr && ud < dateStr) {
-				result.warnings.push('UNTIL is before DTSTART — rule will yield no occurrences');
-			}
+			const [y, m, d] = ud.split('-');
+			const [hh, mm] = (ut || '00:00').split(':');
+			parts.UNTIL = `${y}${m}${d}T${hh}${mm}00Z`;
 		}
 	}
 	// 'forever' → neither COUNT nor UNTIL emitted
@@ -559,26 +447,6 @@ function escHtml(s) {
 		.replace(/>/g, '&gt;');
 }
 
-function colouriseDTSTART(line) {
-	const col = line.indexOf(':');
-	if (col === -1) return escHtml(line);
-	const prop = line.slice(0, col);
-	const val = line.slice(col + 1);
-	const semi = prop.indexOf(';');
-	if (semi === -1) {
-		return `<span class="rr-key">${escHtml(prop)}:</span><span class="rr-val">${escHtml(val)}</span>`;
-	}
-	const propName = prop.slice(0, semi);
-	const param = prop.slice(semi + 1);
-	return (
-		`<span class="rr-key">${escHtml(propName)}</span>` +
-		`<span class="rr-sep">;</span>` +
-		`<span class="prop-param">${escHtml(param)}</span>` +
-		`<span class="rr-sep">:</span>` +
-		`<span class="rr-val">${escHtml(val)}</span>`
-	);
-}
-
 function colouriseRRule(line) {
 	if (!line.startsWith('RRULE:')) return escHtml(line);
 	const inner = line.slice(6).split(';').map(part => {
@@ -595,24 +463,13 @@ function updateOutput(root, $, $$, byId, targetInput) {
 	const rule = buildRule($, $$, byId);
 
 	// ── Keep the hidden input in sync so the parent form submits correctly ───
-	targetInput.value = [rule.dtstart, rule.rrule].filter(Boolean).join('\n');
+	targetInput.value = rule.rrule;
 
 	// ── Refresh the visible output panel ─────────────────────────────────────
-	const dtEl = byId('output-dtstart');
 	const rrEl = byId('output-rrule');
-	const tzEl = byId('tz-note');
-
-	dtEl.innerHTML = rule.dtstart
-		? colouriseDTSTART(rule.dtstart)
+	rrEl.innerHTML = rule.rrule
+		? colouriseRRule(rule.rrule)
 		: '<span style="color:var(--muted)">—</span>';
-
-	rrEl.innerHTML = rule.rrule ? colouriseRRule(rule.rrule) : '';
-	rrEl.style.marginTop = rule.rrule ? '4px' : '0';
-
-	const tz = byId('tz-select').value;
-	tzEl.textContent = (rule.rrule && tz !== 'UTC')
-		? 'ℹ DTSTART uses TZID parameter — consumers must support VTIMEZONE or system tz data'
-		: '';
 
 	// Remove stale global warnings then re-render current ones
 	root.querySelectorAll('.global-warning').forEach(el => el.remove());
@@ -681,18 +538,18 @@ function updateInlineValidation($, $$, byId) {
 		}
 	}
 
-	// Until: end date before start date
+	// Until: surface the UTC-formatted value as a confirmation
 	const endMode = $('input[name$="_end-mode"]:checked').value;
 	const untilNote = byId('until-note');
-	if (untilNote && endMode === 'until') {
-		const sd = byId('start-date').value;
-		const ud = byId('until-date').value;
-		if (sd && ud) {
-			const bad = ud < sd;
-			untilNote.className = 'validation-msg' + (bad ? '' : ' ok');
-			untilNote.textContent = bad
-				? '⚠ Until date is before start date'
-				: '✓ Valid end date';
+	if (untilNote) {
+		if (endMode === 'until') {
+			const ud = byId('until-date').value;
+			untilNote.className = 'validation-msg' + (ud ? ' ok' : '');
+			untilNote.textContent = ud
+				? `✓ End date set`
+				: '⚠ No end date selected';
+		} else {
+			untilNote.textContent = '';
 		}
 	}
 }
@@ -736,7 +593,7 @@ function applyEndModeVisibility($, byId) {
 
 // ─── Event listeners ──────────────────────────────────────────────────────────
 
-function attachListeners(root, $, $$, byId, id, targetInput) {
+function attachListeners(root, $, $$, byId, targetInput) {
 	const refresh = () => updateOutput(root, $, $$, byId, targetInput);
 
 	// Recurring toggle
@@ -784,7 +641,6 @@ function attachListeners(root, $, $$, byId, id, targetInput) {
 
 	// All scalar inputs / selects that feed buildRule()
 	[
-		'start-date', 'start-time', 'tz-select',
 		'until-date', 'until-time', 'count-val',
 		'month-setpos', 'month-byday',
 		'yearly-month', 'yearly-monthday',
@@ -798,9 +654,9 @@ function attachListeners(root, $, $$, byId, id, targetInput) {
 
 	// Copy button
 	byId('copy-btn').addEventListener('click', () => {
-		const rule = buildRule($, $$, byId);
-		const text = [rule.dtstart, rule.rrule].filter(Boolean).join('\n');
-		navigator.clipboard.writeText(text).then(() => {
+		const { rrule } = buildRule($, $$, byId);
+		if (!rrule) return;
+		navigator.clipboard.writeText(rrule).then(() => {
 			const btn = byId('copy-btn');
 			btn.textContent = 'Copied!';
 			btn.classList.add('copied');
