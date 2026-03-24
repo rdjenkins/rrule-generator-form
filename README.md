@@ -11,11 +11,14 @@ In any HTML form(s) that requires an RRULE in a HTML Input (text) element - just
 
 // Example with pre-exsiting RRULE to edit
 <form id="my_form_2">
-<input type="text" data-rrule-generator-form value="RRULE:FREQ=MONTHLY;COUNT=5;BYMONTHDAY=9,12,13">
+<input type="text" data-rrule-generator-form
+  value="RRULE:FREQ=MONTHLY;COUNT=5;BYMONTHDAY=9,12,13">
 <input type="submit">
 </form>
 
-<script src="rrule_gui.js"></script> // only need to include it once, it will find all the elements it needs to change
+<script src="rrule_gui.js"></script>
+// only need to include it once
+// it will find all the elements it needs to change
 ```
 
 ## Acknowledgements
