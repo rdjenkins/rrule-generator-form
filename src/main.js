@@ -38,6 +38,166 @@ const MONTHDAY_OPTIONS = Array.from({ length: 31 }, (_, i) =>
 
 let _instanceCount = 0;
 
+// ─── RRULE parser ─────────────────────────────────────────────────────────────
+
+/**
+ * parseRRule(str)
+ *
+ * Accepts any of the common forms stored in a database field:
+ *   "RRULE:FREQ=MONTHLY;COUNT=5;BYMONTHDAY=9"
+ *   "FREQ=MONTHLY;COUNT=5;BYMONTHDAY=9"        (bare, no prefix)
+ *
+ * Returns a plain object of uppercased key → string value, e.g.:
+ *   { FREQ: 'MONTHLY', COUNT: '5', BYMONTHDAY: '9' }
+ *
+ * Returns null if the string is empty or unparseable.
+ */
+function parseRRule(str) {
+	if (!str || !str.trim()) return null;
+
+	// Strip optional "RRULE:" prefix then any stray whitespace
+	const raw = str.trim().replace(/^RRULE:/i, '');
+	if (!raw) return null;
+
+	const parts = {};
+	for (const segment of raw.split(';')) {
+		const eq = segment.indexOf('=');
+		if (eq === -1) continue;
+		const key = segment.slice(0, eq).trim().toUpperCase();
+		const val = segment.slice(eq + 1).trim();
+		if (key && val) parts[key] = val;
+	}
+
+	return Object.keys(parts).length ? parts : null;
+}
+
+/**
+ * hydrateForm(parts, $, $$, byId)
+ *
+ * Takes the object returned by parseRRule and applies each value back to the
+ * widget's form controls, then returns the freq string so the caller can
+ * trigger the correct visibility passes.
+ *
+ * Decision logic mirrors buildRule() in reverse:
+ *
+ *   FREQ        → freq select + recurring radio set to "yes"
+ *   INTERVAL    → interval number input
+ *   COUNT       → end-mode radio "count" + count-val input
+ *   UNTIL       → end-mode radio "until" + until-date / until-time inputs
+ *   (neither)   → end-mode radio "forever"
+ *
+ * MONTHLY:
+ *   BYMONTHDAY  → month-mode "bymonthday", activate matching day buttons
+ *   BYDAY+BYSETPOS → month-mode "byday", set selects
+ *
+ * WEEKLY:
+ *   BYDAY       → activate matching day buttons
+ *
+ * YEARLY:
+ *   BYMONTH (single) + BYMONTHDAY → yearly-mode "one-month"
+ *   BYMONTH (multiple, no BYSETPOS) → yearly-mode "multi-month"
+ *   BYMONTH + BYDAY + BYSETPOS → yearly-mode "precise"
+ */
+function hydrateForm(parts, $, $$, byId) {
+	// ── Recurring = yes ──────────────────────────────────────────────────────
+	const recurringYes = $('input[name$="_event-recurring"][value="yes"]');
+	recurringYes.checked = true;
+	byId('rrule-card').classList.add('visible');
+
+	// ── FREQ ─────────────────────────────────────────────────────────────────
+	const freq = (parts.FREQ || 'DAILY').toUpperCase();
+	byId('freq').value = freq;
+
+	// ── INTERVAL ─────────────────────────────────────────────────────────────
+	if (parts.INTERVAL) {
+		byId('interval').value = parts.INTERVAL;
+	}
+
+	// ── End condition ─────────────────────────────────────────────────────────
+	if (parts.COUNT) {
+		$('input[name$="_end-mode"][value="count"]').checked = true;
+		byId('count-val').value = parts.COUNT;
+	} else if (parts.UNTIL) {
+		$('input[name$="_end-mode"][value="until"]').checked = true;
+		// UNTIL is stored as YYYYMMDDTHHmmssZ — convert back to HTML date/time inputs
+		const u = parts.UNTIL.replace('Z', '');
+		// u is like "20271231T120000"
+		const datePart = u.slice(0, 8);   // "20271231"
+		const timePart = u.slice(9, 13);  // "1200"
+		const dateHtml = `${datePart.slice(0, 4)}-${datePart.slice(4, 6)}-${datePart.slice(6, 8)}`;
+		const timeHtml = `${timePart.slice(0, 2)}:${timePart.slice(2, 4)}`;
+		byId('until-date').value = dateHtml;
+		byId('until-time').value = timeHtml;
+	} else {
+		$('input[name$="_end-mode"][value="forever"]').checked = true;
+	}
+
+	// ── Frequency-specific BY rules ──────────────────────────────────────────
+
+	if (freq === 'WEEKLY' && parts.BYDAY) {
+		const days = parts.BYDAY.split(',');
+		$$('.day-btn').forEach(btn => {
+			if (days.includes(btn.dataset.day)) btn.classList.add('active');
+		});
+	}
+
+	if (freq === 'MONTHLY') {
+		if (parts.BYMONTHDAY) {
+			// bymonthday mode — activate the day-of-month buttons
+			$('input[name$="_month-mode"][value="bymonthday"]').checked = true;
+			const days = parts.BYMONTHDAY.split(',');
+			$$('.monthday-btn').forEach(btn => {
+				if (days.includes(btn.dataset.mday)) btn.classList.add('active');
+			});
+		} else if (parts.BYDAY && parts.BYSETPOS) {
+			// byday + setpos mode
+			$('input[name$="_month-mode"][value="byday"]').checked = true;
+			byId('month-setpos').value = parts.BYSETPOS;
+			// BYDAY here is a single day or a known multi-day keyword.
+			// Match against the <select> option values exactly.
+			setSelectByValue(byId('month-byday'), parts.BYDAY);
+		}
+	}
+
+	if (freq === 'YEARLY') {
+		const bymonthVals = parts.BYMONTH ? parts.BYMONTH.split(',') : [];
+
+		if (parts.BYSETPOS && parts.BYDAY && parts.BYMONTH) {
+			// Precise: "The Nth <day> of <month>"
+			$('input[name$="_yearly-mode"][value="precise"]').checked = true;
+			byId('yearly-setpos').value = parts.BYSETPOS;
+			setSelectByValue(byId('yearly-byday'), parts.BYDAY);
+			byId('yearly-precise-month').value = parts.BYMONTH;
+
+		} else if (bymonthVals.length > 1) {
+			// Multiple months — activate month buttons
+			$('input[name$="_yearly-mode"][value="multi-month"]').checked = true;
+			$$('.yearly-month-btn').forEach(btn => {
+				if (bymonthVals.includes(btn.dataset.month)) btn.classList.add('active');
+			});
+
+		} else {
+			// Single month + day-of-month
+			$('input[name$="_yearly-mode"][value="one-month"]').checked = true;
+			if (parts.BYMONTH) byId('yearly-month').value = parts.BYMONTH;
+			if (parts.BYMONTHDAY) byId('yearly-monthday').value = parts.BYMONTHDAY;
+		}
+	}
+
+	return freq;
+}
+
+/**
+ * setSelectByValue(selectEl, value)
+ *
+ * Sets a <select> to the option whose value matches `value`.
+ * Falls back gracefully if no match is found (leaves the current selection).
+ */
+function setSelectByValue(selectEl, value) {
+	const opt = Array.from(selectEl.options).find(o => o.value === value);
+	if (opt) selectEl.value = value;
+}
+
 // ─── Factory ──────────────────────────────────────────────────────────────────
 
 /**
@@ -47,6 +207,9 @@ let _instanceCount = 0;
  * The input is hidden (but remains in the DOM / form) and its value is kept
  * in sync with the widget so the form submits the correct RRULE string.
  *
+ * If the input already has a value it is parsed and used to pre-populate the
+ * form so the user can edit an existing rule.
+ *
  * @param {HTMLInputElement} targetInput  The input to attach to.
  * @returns {{ destroy: Function }}       Call destroy() to remove the widget.
  */
@@ -55,9 +218,12 @@ function RRuleGenerator(targetInput) {
 	const uid = `rrg${++_instanceCount}`;
 	const id = suffix => `${uid}-${suffix}`;
 
+	// ── Read any existing value before hiding the input ──────────────────────
+	const existingValue = (targetInput.value || '').trim();
+
 	// ── Hide the target input — keep it in the form for submission ───────────
 	targetInput.type = 'hidden';
-	targetInput.value = '';
+	targetInput.value = existingValue; // preserve until first updateOutput()
 
 	// ── Build and inject the widget markup ───────────────────────────────────
 	const widget = document.createElement('div');
@@ -74,14 +240,27 @@ function RRuleGenerator(targetInput) {
 	const $$ = sel => Array.from(root.querySelectorAll(sel));
 	const byId = suffix => root.querySelector(`#${id(suffix)}`);
 
+	// ── Hydrate from existing value if present ───────────────────────────────
+	const parsedParts = parseRRule(existingValue);
+	if (parsedParts) {
+		const detectedFreq = hydrateForm(parsedParts, $, $$, byId);
+		// Visibility must be applied after hydration so the correct sub-panels show
+		applyFreqVisibility(byId);
+		applyMonthModeVisibility($, byId);
+		applyYearlyModeVisibility($, byId);
+		applyEndModeVisibility($, byId);
+	} else {
+		// Fresh / empty — standard initial state
+		applyFreqVisibility(byId);
+		applyMonthModeVisibility($, byId);
+		applyYearlyModeVisibility($, byId);
+		applyEndModeVisibility($, byId);
+	}
+
 	// ── Wire up all event listeners ──────────────────────────────────────────
 	attachListeners(root, $, $$, byId, targetInput);
 
-	// ── Apply initial visibility and render first output ─────────────────────
-	applyFreqVisibility(byId);
-	applyMonthModeVisibility($, byId);
-	applyYearlyModeVisibility($, byId);
-	applyEndModeVisibility($, byId);
+	// ── Render initial output (syncs targetInput.value) ──────────────────────
 	updateOutput(root, $, $$, byId, targetInput);
 
 	// ── Public API ────────────────────────────────────────────────────────────
@@ -545,9 +724,7 @@ function updateInlineValidation($, $$, byId) {
 		if (endMode === 'until') {
 			const ud = byId('until-date').value;
 			untilNote.className = 'validation-msg' + (ud ? ' ok' : '');
-			untilNote.textContent = ud
-				? `✓ End date set`
-				: '⚠ No end date selected';
+			untilNote.textContent = ud ? '✓ End date set' : '⚠ No end date selected';
 		} else {
 			untilNote.textContent = '';
 		}
