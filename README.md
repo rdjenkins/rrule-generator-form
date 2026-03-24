@@ -1,8 +1,8 @@
 # HOWTO use
 
-In any HTML form(s) that requires an RRULE in a HTML Input (text) element - just add a property 'data-rrule-generator-form' to identify it then include the Javascript e.g.
+In any HTML form(s) that requires an RRULE in a HTML Input (text) element - just add a property 'data-rrule-generator-form' to identify the element, then include the Javascript e.g.
 
-'''
+```
 // Example blank
 <form id="my_form_1">
 <input type="text" data-rrule-generator-form value="">
@@ -15,8 +15,8 @@ In any HTML form(s) that requires an RRULE in a HTML Input (text) element - just
 <input type="submit">
 </form>
 
-<script src="rrule_gui.js"></script>
-'''
+<script src="rrule_gui.js"></script> // only need to include it once, it will find all the elements it needs to change
+```
 
 ## Acknowledgements
 
