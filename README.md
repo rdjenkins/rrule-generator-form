@@ -19,6 +19,19 @@ In any HTML form(s) that requires a properly formatted RRULE in a HTML Input (te
     <input id="submit2" type="submit">
   </form>
 
+  <h1>form 3- pre-existing RRULE</h1>
+  <form id="form1">
+    <input type="text" data-rrule-generator-form id="xyz123"
+      value="RRULE:FREQ=MONTHLY;COUNT=5;BYMONTHDAY=9"></input><br>
+    <input type="text" id="xyz123456"
+      value="This is something other than an RRULE"><br>
+    <input id="submit3" type="submit">
+  </form>
+
+/*
+   You can find the bundled JavaScript in the dist/ folder
+   in this repository.
+*/
 <script src="rrule_gui.js"></script>
 
 // only need to include it once
