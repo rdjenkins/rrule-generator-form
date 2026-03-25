@@ -301,11 +301,6 @@ function buildTemplate(uid, id) {
 	return `
   <div class="rrule-widget-inner">
 
-    <div class="page-header">
-      <h1>RRULE Generator</h1>
-      <span class="badge">RFC 5545</span>
-    </div>
-
     <!-- ── Recurring toggle card ── -->
     <div class="card">
       <div class="card-header"><div class="dot"></div><span>Recurrence</span></div>
