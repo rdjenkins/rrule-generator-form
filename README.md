@@ -1,4 +1,7 @@
-# HOWTO use
+## TODO
+Test and fix the submit vars by testing in a real form
+
+## HOWTO use
 
 In any HTML form(s) that requires a properly formatted RRULE in a HTML Input (text) element - just add a property 'data-rrule-generator-form' to identify the element, then include the Javascript e.g.
 
