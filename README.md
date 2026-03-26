@@ -24,10 +24,10 @@ In any HTML form(s) that requires a properly formatted RRULE in a HTML Input (te
   </form>
 
 
-  <h1>form 3 - pre-existing RRULE</h1>
-  <form id="my_form_3" method="get">
+  <h1>form 3- pre-existing RRULE with odd RFC5545 use</h1>
+  <form id="form1" method="get">
     <input type="text" data-rrule-generator-form id="xyz123" name="xyz123"
-      value="RRULE:FREQ=MONTHLY;COUNT=5;BYMONTHDAY=9"></input><br>
+      value="RRULE:FREQ=MONTHLY;INTERVAL=1;COUNT=5;BYDAY=2WE"></input><br>
     <input type="text" id="xyz123456" name="xyz123456"
       value="This is something other than an RRULE"><br>
     <input id="submit3" type="submit">
