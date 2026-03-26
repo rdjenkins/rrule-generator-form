@@ -24,8 +24,8 @@ In any HTML form(s) that requires a properly formatted RRULE in a HTML Input (te
   </form>
 
 
-  <h1>form 3- pre-existing RRULE</h1>
-  <form id="form1" method="get">
+  <h1>form 3 - pre-existing RRULE</h1>
+  <form id="my_form_3" method="get">
     <input type="text" data-rrule-generator-form id="xyz123" name="xyz123"
       value="RRULE:FREQ=MONTHLY;COUNT=5;BYMONTHDAY=9"></input><br>
     <input type="text" id="xyz123456" name="xyz123456"
@@ -33,14 +33,14 @@ In any HTML form(s) that requires a properly formatted RRULE in a HTML Input (te
     <input id="submit3" type="submit">
   </form>
 
-/*
-   You can find the bundled JavaScript in the dist/ folder
-   in this repository.
-*/
 <script src="rrule_gui.js"></script>
 
-// It only needs to be included once.
-// It will find all the input elements.
+/*
+  You can find the bundled JavaScript in the dist/ folder
+    in this repository.
+  It only needs to be included once.
+  It will find all the input elements.
+*/
 ```
 
 ## Acknowledgements
