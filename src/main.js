@@ -109,7 +109,7 @@ function hydrateForm(parts, $, $$, byId) {
 	byId('freq').value = freq;
 
 	// INTERVAL ─────────────────────────────────────────────────────────────
-	if (parts.INTERVAL) {
+	if (parts.INTERVAL && parts.INTERVAL !== '1') {
 		byId('interval').value = parts.INTERVAL;
 	}
 
@@ -149,13 +149,30 @@ function hydrateForm(parts, $, $$, byId) {
 			$$('.monthday-btn').forEach(btn => {
 				if (days.includes(btn.dataset.mday)) btn.classList.add('active');
 			});
-		} else if (parts.BYDAY && parts.BYSETPOS) {
-			// byday + setpos mode
-			$('input[name$="_month-mode"][value="byday"]').checked = true;
-			byId('month-setpos').value = parts.BYSETPOS;
-			// BYDAY here is a single day or a known multi-day keyword.
-			// Match against the <select> option values exactly.
-			setSelectByValue(byId('month-byday'), parts.BYDAY);
+		} else if (parts.BYDAY) {
+			// byday + setpos mode.
+			// BYDAY may carry an inline ordinal prefix per RFC 5545 §3.3.10,
+			// e.g. "2WE" (2nd Wednesday) or "-1FR" (last Friday).
+			// Normalise into separate setpos / day values so the selects can be
+			// populated — from an explicit BYSETPOS part, or extracted from the
+			// prefixed BYDAY value itself.
+			let setpos = parts.BYSETPOS || null;
+			let byday = parts.BYDAY;
+
+			const prefixMatch = byday.match(/^(-?\d+)([A-Z]{2})$/);
+			if (prefixMatch) {
+				// Inline ordinal form: split "2WE" → setpos="2", byday="WE"
+				setpos = prefixMatch[1];
+				byday = prefixMatch[2];
+			}
+
+			if (setpos) {
+				$('input[name$="_month-mode"][value="byday"]').checked = true;
+				byId('month-setpos').value = setpos;
+				// byday is now a bare day code or known multi-day keyword —
+				// match against the <select> option values exactly.
+				setSelectByValue(byId('month-byday'), byday);
+			}
 		}
 	}
 
