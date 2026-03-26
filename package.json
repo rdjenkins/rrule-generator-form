@@ -1,6 +1,6 @@
 {
   "name": "rrule-generator-form",
-  "version": "1.0.5",
+  "version": "1.0.6",
   "description": "There are great resources for RRULE reading and processing, but I could not find a good HTML / JavaScript form that would generate a RRULE based on a user's input, as well as read a RRULE and populate the same form appropriately.   Using the iCal inputs for inspiration, I created this easy-to-use form.",
   "main": "index.js",
   "scripts": {

@@ -522,6 +522,7 @@ function buildTemplate(uid, id) {
       <div class="output-body" id="${id('output-body')}">
         <!-- copy of the input (the original is hidden) -->
       </div>
+      <p class="output-description" id="${id('output-description')}"></p>
     </div>
 
   </div>
@@ -639,6 +640,142 @@ function buildRule($, $$, byId) {
 	return result;
 }
 
+// ─── Human-readable description ──────────────────────────────────────────────
+
+/**
+ * describeRRule(rule)
+ *
+ * Accepts the object returned by buildRule() and returns a plain-English
+ * sentence describing the recurrence, e.g.:
+ *   "Every 2 weeks on Monday and Wednesday, ending after 5 occurrences."
+ *   "Every month on the last Friday, ending on 31 December 2027."
+ *   "Every year on 15 March, repeating forever."
+ *
+ * Returns an empty string when the rule is empty (non-recurring).
+ */
+function describeRRule(rule) {
+	if (!rule.rrule) return '';
+
+	// Re-parse the already-assembled string so this function has no dependency
+	// on internal form state — it works purely from the canonical RRULE value.
+	const parts = {};
+	rule.rrule.replace(/^RRULE:/i, '').split(';').forEach(seg => {
+		const eq = seg.indexOf('=');
+		if (eq !== -1) parts[seg.slice(0, eq).toUpperCase()] = seg.slice(eq + 1);
+	});
+
+	const freq = parts.FREQ || 'DAILY';
+	const interval = parseInt(parts.INTERVAL || '1', 10);
+
+	// ── Lookup helpers ───────────────────────────────────────────────────────
+
+	const DAY_NAMES = {
+		MO: 'Monday', TU: 'Tuesday', WE: 'Wednesday', TH: 'Thursday',
+		FR: 'Friday', SA: 'Saturday', SU: 'Sunday',
+	};
+
+	const ORDINALS = { '1': '1st', '2': '2nd', '3': '3rd', '4': '4th', '-1': 'last' };
+
+	const MONTH_NAMES = ['', 'January', 'February', 'March', 'April', 'May', 'June',
+		'July', 'August', 'September', 'October', 'November', 'December'];
+
+	function ordinal(n) {
+		const s = String(n);
+		return ORDINALS[s] || s + 'th';
+	}
+
+	function dayList(byday) {
+		// byday may be a comma-separated list of bare codes, or a known keyword
+		const KEYWORDS = {
+			'MO,TU,WE,TH,FR': 'weekdays',
+			'SA,SU': 'weekend days',
+			'MO,TU,WE,TH,FR,SA,SU': 'days',
+		};
+		if (KEYWORDS[byday]) return KEYWORDS[byday];
+		const names = byday.split(',').map(d => DAY_NAMES[d] || d);
+		if (names.length === 1) return names[0];
+		return names.slice(0, -1).join(', ') + ' and ' + names[names.length - 1];
+	}
+
+	function monthList(bymonth) {
+		const names = bymonth.split(',').map(m => MONTH_NAMES[parseInt(m, 10)] || m);
+		if (names.length === 1) return names[0];
+		return names.slice(0, -1).join(', ') + ' and ' + names[names.length - 1];
+	}
+
+	function monthdayList(bymonthday) {
+		const days = bymonthday.split(',').map(d => ordinal(parseInt(d, 10)));
+		if (days.length === 1) return 'the ' + days[0];
+		return 'the ' + days.slice(0, -1).join(', ') + ' and ' + days[days.length - 1];
+	}
+
+	function formatUntil(until) {
+		// until is "YYYYMMDDTHHmmssZ"
+		const y = until.slice(0, 4);
+		const m = parseInt(until.slice(4, 6), 10);
+		const d = parseInt(until.slice(6, 8), 10);
+		return `${ordinal(d)} ${MONTH_NAMES[m]} ${y}`;
+	}
+
+	// ── Frequency phrase ─────────────────────────────────────────────────────
+
+	let freqPhrase;
+	if (interval === 1) {
+		freqPhrase = {
+			DAILY: 'Every day', WEEKLY: 'Every week',
+			MONTHLY: 'Every month', YEARLY: 'Every year'
+		}[freq] || 'Every period';
+	} else {
+		const unit = {
+			DAILY: 'days', WEEKLY: 'weeks',
+			MONTHLY: 'months', YEARLY: 'years'
+		}[freq] || 'periods';
+		freqPhrase = `Every ${interval} ${unit}`;
+	}
+
+	// ── By-rule phrase ───────────────────────────────────────────────────────
+
+	let byPhrase = '';
+
+	if (freq === 'WEEKLY' && parts.BYDAY) {
+		byPhrase = ` on ${dayList(parts.BYDAY)}`;
+	}
+
+	if (freq === 'MONTHLY') {
+		if (parts.BYMONTHDAY) {
+			byPhrase = ` on ${monthdayList(parts.BYMONTHDAY)} of the month`;
+		} else if (parts.BYDAY && parts.BYSETPOS) {
+			const pos = ORDINALS[parts.BYSETPOS] || parts.BYSETPOS;
+			byPhrase = ` on the ${pos} ${dayList(parts.BYDAY)} of the month`;
+		}
+	}
+
+	if (freq === 'YEARLY') {
+		if (parts.BYMONTH && parts.BYMONTHDAY && !parts.BYSETPOS) {
+			byPhrase = ` on ${monthdayList(parts.BYMONTHDAY)} ${monthList(parts.BYMONTH)}`;
+		} else if (parts.BYMONTH && !parts.BYSETPOS) {
+			byPhrase = ` in ${monthList(parts.BYMONTH)}`;
+		} else if (parts.BYSETPOS && parts.BYDAY && parts.BYMONTH) {
+			const pos = ORDINALS[parts.BYSETPOS] || parts.BYSETPOS;
+			byPhrase = ` on the ${pos} ${dayList(parts.BYDAY)} of ${monthList(parts.BYMONTH)}`;
+		}
+	}
+
+	// ── End condition phrase ─────────────────────────────────────────────────
+
+	let endPhrase;
+	if (parts.COUNT) {
+		const n = parseInt(parts.COUNT, 10);
+		endPhrase = `, ending after ${n} occurrence${n !== 1 ? 's' : ''}`;
+	} else if (parts.UNTIL) {
+		endPhrase = `, ending on ${formatUntil(parts.UNTIL)}`;
+	} else {
+		endPhrase = ', repeating forever';
+	}
+
+	return freqPhrase + byPhrase + endPhrase + '.';
+}
+
 // ─── Output rendering ─────────────────────────────────────────────────────────
 
 function updateOutput(root, $, $$, byId, targetInput, displayInput) {
@@ -647,6 +784,10 @@ function updateOutput(root, $, $$, byId, targetInput, displayInput) {
 	// Write the RRULE string to the original input AND the display one
 	targetInput.value = rule.rrule; // this is hidden
 	displayInput.value = rule.rrule; // this is in the RRULE display card
+
+	// Update the human-readable description
+	const descEl = byId('output-description');
+	if (descEl) descEl.textContent = describeRRule(rule);
 
 
 	// Remove stale global warnings then re-render current ones

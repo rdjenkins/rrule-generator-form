@@ -272,3 +272,11 @@ select {
     line-height: 1.7;
     word-break: break-all;
 }
+
+.output-description {
+    font-size: 12px;
+    font-style: italic;
+    color: var(--muted);
+    padding: 0 12px 10px;
+    min-height: 1.4em;
+}
