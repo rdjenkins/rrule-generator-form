@@ -73,6 +73,15 @@ body {
     letter-spacing: 0.02em;
 }
 
+.card-header .badge {
+    margin-left: auto;
+}
+
+.card-header .badge a {
+    text-decoration: none;
+    color: inherit;
+}
+
 .card-body {
     padding: 16px;
 }

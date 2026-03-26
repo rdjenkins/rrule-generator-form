@@ -99,21 +99,21 @@ function parseRRule(str) {
  *   BYMONTH + BYDAY + BYSETPOS → yearly-mode "precise"
  */
 function hydrateForm(parts, $, $$, byId) {
-	// ── Recurring = yes ──────────────────────────────────────────────────────
+	// Recurring = yes ──────────────────────────────────────────────────────
 	const recurringYes = $('input[name$="_event-recurring"][value="yes"]');
 	recurringYes.checked = true;
 	byId('rrule-card').classList.add('visible');
 
-	// ── FREQ ─────────────────────────────────────────────────────────────────
+	// FREQ ─────────────────────────────────────────────────────────────────
 	const freq = (parts.FREQ || 'DAILY').toUpperCase();
 	byId('freq').value = freq;
 
-	// ── INTERVAL ─────────────────────────────────────────────────────────────
+	// INTERVAL ─────────────────────────────────────────────────────────────
 	if (parts.INTERVAL) {
 		byId('interval').value = parts.INTERVAL;
 	}
 
-	// ── End condition ─────────────────────────────────────────────────────────
+	// End condition ─────────────────────────────────────────────────────────
 	if (parts.COUNT) {
 		$('input[name$="_end-mode"][value="count"]').checked = true;
 		byId('count-val').value = parts.COUNT;
@@ -132,7 +132,7 @@ function hydrateForm(parts, $, $$, byId) {
 		$('input[name$="_end-mode"][value="forever"]').checked = true;
 	}
 
-	// ── Frequency-specific BY rules ──────────────────────────────────────────
+	// Frequency-specific BY rules ──────────────────────────────────────────
 
 	if (freq === 'WEEKLY' && parts.BYDAY) {
 		const days = parts.BYDAY.split(',');
@@ -213,19 +213,22 @@ function setSelectByValue(selectEl, value) {
  * @param {HTMLInputElement} targetInput  The input to attach to.
  * @returns {{ destroy: Function }}       Call destroy() to remove the widget.
  */
-function RRuleGenerator(targetInput) {
-	// ── Unique prefix for all internal IDs in this instance ─────────────────
+function RRuleGenerator(targetInput, displayInput) {
+	// Unique prefix for all internal IDs in this instance ─────────────────
 	const uid = `rrg${++_instanceCount}`;
 	const id = suffix => `${uid}-${suffix}`;
 
-	// ── Read any existing value before repositioning the input ───────────────
+	// Read any existing value before repositioning the input ───────────────
 	const existingValue = (targetInput.value || '').trim();
 
-	// ── Make the input readonly — it stays visible and in the form ───────────
-	targetInput.readOnly = true;
-	targetInput.classList.add('rrule-output-input');
+	// Make the display input readonly — it stays visible and in the form ───────────
+	displayInput.readOnly = true;
+	displayInput.classList.add('rrule-output-input');
 
-	// ── Build and inject the widget markup ───────────────────────────────────
+	// Hide the original input — it remains in the DOM and in the form, but out of sight
+	targetInput.type = 'hidden';
+
+	// Build and inject the widget markup ───────────────────────────────────
 	const widget = document.createElement('div');
 	widget.className = 'rrule-generator-widget';
 	widget.dataset.uid = uid;
@@ -234,16 +237,17 @@ function RRuleGenerator(targetInput) {
 	// Insert immediately after the target input
 	targetInput.insertAdjacentElement('afterend', widget);
 
-	// ── Scoped query helpers (never leak outside this widget) ────────────────
+	// Scoped query helpers (never leak outside this widget) ────────────────
 	const root = widget;
 	const $ = sel => root.querySelector(sel);
 	const $$ = sel => Array.from(root.querySelectorAll(sel));
 	const byId = suffix => root.querySelector(`#${id(suffix)}`);
 
-	// ── Move the real input into the output slot ─────────────────────────────
-	byId('output-body').appendChild(targetInput);
+	// Move the real input into the output slot ─────────────────────────────
+	//byId('output-body').appendChild(targetInput); // don't do this!
+	byId('output-body').appendChild(displayInput); // instead, show the display input and keep the real one hidden
 
-	// ── Hydrate from existing value if present ───────────────────────────────
+	// Hydrate from existing value if present ───────────────────────────────
 	const parsedParts = parseRRule(existingValue);
 	if (parsedParts) {
 		const detectedFreq = hydrateForm(parsedParts, $, $$, byId);
@@ -260,13 +264,13 @@ function RRuleGenerator(targetInput) {
 		applyEndModeVisibility($, byId);
 	}
 
-	// ── Wire up all event listeners ──────────────────────────────────────────
-	attachListeners(root, $, $$, byId, targetInput);
+	// Wire up all event listeners ──────────────────────────────────────────
+	attachListeners(root, $, $$, byId, targetInput, displayInput);
 
-	// ── Render initial output (syncs targetInput.value) ──────────────────────
-	updateOutput(root, $, $$, byId, targetInput);
+	// Render initial output (syncs targetInput.value) ──────────────────────
+	updateOutput(root, $, $$, byId, targetInput, displayInput);
 
-	// ── Public API ────────────────────────────────────────────────────────────
+	// Public API ────────────────────────────────────────────────────────────
 	return {
 		/** Remove the widget and restore the original input. */
 		destroy() {
@@ -299,11 +303,12 @@ function buildTemplate(uid, id) {
 	const n = suffix => `${uid}_${suffix}`;
 
 	return `
+  <form><!-- dummy form to isolate the rrule inputs -->
   <div class="rrule-widget-inner">
 
     <!-- ── Recurring toggle card ── -->
     <div class="card">
-      <div class="card-header"><div class="dot"></div><span>Recurrence</span></div>
+      <div class="card-header"><div class="dot"></div><span>Recurrence</span><span class="badge"><a href="https://github.com/rdjenkins/rrule-generator-form" target="_blank">rrule-generator-form</a></span></div>
       <div class="card-body">
         <div class="form-row">
           <label class="row-label">Recurring</label>
@@ -493,18 +498,18 @@ function buildTemplate(uid, id) {
 
       </div>
     </div>
-
     <!-- ── Output panel ── -->
     <div class="output-card">
       <div class="output-header">
-        <span class="label">Output</span>
+        <span class="label">RRULE</span>
       </div>
       <div class="output-body" id="${id('output-body')}">
-        <!-- targetInput is moved here by the factory -->
+        <!-- copy of the input (the original is hidden) -->
       </div>
     </div>
 
-  </div>`;
+  </div>
+  </form>`;
 }
 
 // ─── Rule builder ─────────────────────────────────────────────────────────────
@@ -535,7 +540,7 @@ function buildRule($, $$, byId) {
 	// INTERVAL=1 is the RFC 5545 default — omit it to keep output clean
 	if (interval !== 1) parts.INTERVAL = interval;
 
-	// ── Frequency-specific BY rules ──────────────────────────────────────────
+	// Frequency-specific BY rules ──────────────────────────────────────────
 
 	if (freq === 'WEEKLY') {
 		const days = $$('.day-btn.active').map(b => b.dataset.day);
@@ -586,7 +591,7 @@ function buildRule($, $$, byId) {
 		}
 	}
 
-	// ── End condition ─────────────────────────────────────────────────────────
+	// End condition ─────────────────────────────────────────────────────────
 	// COUNT and UNTIL are mutually exclusive (RFC 5545 §3.3.10).
 	// The three-way radio (forever / count / until) enforces this structurally.
 
@@ -605,7 +610,7 @@ function buildRule($, $$, byId) {
 	}
 	// 'forever' → neither COUNT nor UNTIL emitted
 
-	// ── Assemble RRULE string ─────────────────────────────────────────────────
+	// Assemble RRULE string ─────────────────────────────────────────────────
 	// Canonical part order per RFC 5545 convention:
 	// FREQ → UNTIL/COUNT → INTERVAL → BYDAY → BYMONTHDAY → BYMONTH → BYSETPOS
 	const ORDER = ['FREQ', 'UNTIL', 'COUNT', 'INTERVAL', 'BYDAY', 'BYMONTHDAY', 'BYMONTH', 'BYSETPOS'];
@@ -619,13 +624,13 @@ function buildRule($, $$, byId) {
 
 // ─── Output rendering ─────────────────────────────────────────────────────────
 
-function updateOutput(root, $, $$, byId, targetInput) {
+function updateOutput(root, $, $$, byId, targetInput, displayInput) {
 	const rule = buildRule($, $$, byId);
 
-	// ── Write the RRULE string into the visible readonly input ───────────────
-	// The input is already inside the widget's output slot, so this both
-	// displays the current value to the user and keeps the form value correct.
+	// Write the RRULE string to the original input and the display one
 	targetInput.value = rule.rrule;
+	displayInput.value = rule.rrule;
+
 
 	// Remove stale global warnings then re-render current ones
 	root.querySelectorAll('.global-warning').forEach(el => el.remove());
@@ -747,8 +752,8 @@ function applyEndModeVisibility($, byId) {
 
 // ─── Event listeners ──────────────────────────────────────────────────────────
 
-function attachListeners(root, $, $$, byId, targetInput) {
-	const refresh = () => updateOutput(root, $, $$, byId, targetInput);
+function attachListeners(root, $, $$, byId, targetInput, displayInput) {
+	const refresh = () => updateOutput(root, $, $$, byId, targetInput, displayInput);
 
 	// Recurring toggle
 	$$('input[name$="_event-recurring"]').forEach(r => {
@@ -820,7 +825,13 @@ function attachListeners(root, $, $$, byId, targetInput) {
  */
 document.addEventListener('DOMContentLoaded', () => {
 	document.querySelectorAll('input[data-rrule-generator-form]').forEach(input => {
-		RRuleGenerator(input);
+		if (input.name === null || input.name === '') {
+			console.error('rrule-generator-form abandoning. Input element has no name attribute:', input);
+			return;
+		}
+		console.info('rrule-generator-form initializing on input[name="' + input.name + '"]');
+		var input_display = input.cloneNode(true);
+		RRuleGenerator(input, input_display);
 	});
 });
 
