@@ -616,7 +616,8 @@ function buildRule($, $$, byId) {
 	const rruleParts = ORDER
 		.filter(k => parts[k] !== undefined)
 		.map(k => `${k}=${parts[k]}`);
-	result.rrule = 'RRULE:' + rruleParts.join(';');
+	//	result.rrule = 'RRULE:' + rruleParts.join(';');
+	result.rrule = rruleParts.join(';');
 
 	return result;
 }
