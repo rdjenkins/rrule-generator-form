@@ -244,8 +244,7 @@ function RRuleGenerator(targetInput, displayInput) {
 	const byId = suffix => root.querySelector(`#${id(suffix)}`);
 
 	// Move the real input into the output slot ─────────────────────────────
-	//byId('output-body').appendChild(targetInput); // don't do this!
-	byId('output-body').appendChild(displayInput); // instead, show the display input and keep the real one hidden
+	byId('output-body').appendChild(displayInput); // show the RRULE display keep the real one hidden
 
 	// Hydrate from existing value if present ───────────────────────────────
 	const parsedParts = parseRRule(existingValue);
@@ -627,9 +626,9 @@ function buildRule($, $$, byId) {
 function updateOutput(root, $, $$, byId, targetInput, displayInput) {
 	const rule = buildRule($, $$, byId);
 
-	// Write the RRULE string to the original input and the display one
-	targetInput.value = rule.rrule;
-	displayInput.value = rule.rrule;
+	// Write the RRULE string to the original input AND the display one
+	targetInput.value = rule.rrule; // this is hidden
+	displayInput.value = rule.rrule; // this is in the RRULE display card
 
 
 	// Remove stale global warnings then re-render current ones
@@ -819,9 +818,6 @@ function attachListeners(root, $, $$, byId, targetInput, displayInput) {
  * Automatically attach a widget to every
  *   <input data-rrule-generator-form>
  * found in the document at page load.
- *
- * You can also call RRuleGenerator(inputEl) manually at any time after the
- * DOM is ready (e.g. for dynamically inserted inputs).
  */
 document.addEventListener('DOMContentLoaded', () => {
 	document.querySelectorAll('input[data-rrule-generator-form]').forEach(input => {
@@ -834,5 +830,3 @@ document.addEventListener('DOMContentLoaded', () => {
 		RRuleGenerator(input, input_display);
 	});
 });
-
-export { RRuleGenerator };
